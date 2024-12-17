@@ -1,0 +1,55 @@
+name: Notebook Output Stripping
+
+on:
+  pull_request:
+    paths:
+      - '**/*.ipynb'
+  push:
+    paths:
+      - '**/*.ipynb'
+
+jobs:
+  strip-notebook-outputs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+
+    - name: Install nbstripout
+      run: |
+        python -m pip install --upgrade pip
+        pip install nbstripout
+
+    - name: Strip notebook outputs
+      run: |
+        # Find all notebook files
+        NOTEBOOKS=$(find . -name "*.ipynb")
+
+        # Strip outputs from notebooks
+        for notebook in $NOTEBOOKS; do
+          nbstripout "$notebook"
+        done
+
+    - name: Check for changes
+      id: check_changes
+      run: |
+        git diff --exit-code
+        if [ $? -ne 0 ]; then
+          echo "Notebooks contained cell outputs that were stripped."
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+        else
+          echo "No changes detected."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Fail if changes were detected
+      if: steps.check_changes.outputs.changes_detected == 'true'
+      run: |
+        echo "Error: Notebook cell outputs were found. Please run nbstripout before committing."
+        exit 1
