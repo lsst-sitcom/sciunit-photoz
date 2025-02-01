@@ -1,5 +1,4 @@
-name: Notebook Output Stripping
-
+name: Notebook Output Checking
 on:
   pull_request:
     paths:
@@ -7,49 +6,79 @@ on:
   push:
     paths:
       - '**/*.ipynb'
-
 jobs:
-  strip-notebook-outputs:
+  check-notebook-outputs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-
-    - name: Install nbstripout
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install nbstripout
-
-    - name: Strip notebook outputs
+        pip install nbstripout nbformat
+    - name: Check notebook outputs
+      id: check_outputs
       run: |
-        # Find all notebook files
-        NOTEBOOKS=$(find . -name "*.ipynb")
-
-        # Strip outputs from notebooks
-        for notebook in $NOTEBOOKS; do
-          nbstripout "$notebook"
+        #!/bin/bash
+        set -e
+        
+        check_notebook() {
+          local notebook=$1
+          python - <<EOF
+        import json
+        import nbformat
+        
+        with open("$notebook", 'r') as f:
+            nb = nbformat.read(f, as_version=4)
+            
+        has_outputs = False
+        for cell in nb.cells:
+            if cell.cell_type == 'code':
+                if cell.get('outputs') and len(cell.get('outputs')) > 0:
+                    has_outputs = True
+                    break
+                if cell.get('execution_count') is not None:
+                    has_outputs = True
+                    break
+                    
+        exit(1 if has_outputs else 0)
+        EOF
+        }
+        
+        failed=false
+        notebooks_with_output=""
+        
+        for notebook in $(find . -name "*.ipynb" -not -path "*/\.*"); do
+          if check_notebook "$notebook"; then
+            echo "✓ $notebook is clean"
+          else
+            echo "✗ $notebook contains outputs"
+            failed=true
+            notebooks_with_output="$notebooks_with_output\n$notebook"
+          fi
         done
-
-    - name: Check for changes
-      id: check_changes
-      run: |
-        git diff --exit-code
-        if [ $? -ne 0 ]; then
-          echo "Notebooks contained cell outputs that were stripped."
-          echo "changes_detected=true" >> $GITHUB_OUTPUT
+        
+        if [ "$failed" = true ]; then
+          echo "error=true" >> $GITHUB_OUTPUT
+          echo "notebooks=$notebooks_with_output" >> $GITHUB_OUTPUT
+          exit 0  # Don't fail here to allow custom error message
         else
-          echo "No changes detected."
-          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          echo "error=false" >> $GITHUB_OUTPUT
+          exit 0
         fi
-
-    - name: Fail if changes were detected
-      if: steps.check_changes.outputs.changes_detected == 'true'
+    - name: Fail if outputs found
+      if: steps.check_outputs.outputs.error == 'true'
       run: |
-        echo "Error: Notebook cell outputs were found. Please run nbstripout before committing."
+        echo "Error: The following notebooks contain outputs:"
+        echo "${{ steps.check_outputs.outputs.notebooks }}"
+        echo ""
+        echo "Please clear all outputs before committing. You can:"
+        echo "1. Use nbstripout: pip install nbstripout && nbstripout <notebook>"
+        echo "2. Use Jupyter: Edit -> Clear All Outputs"
+        echo "3. Use JupyterLab: Edit -> Clear All Outputs"
         exit 1
