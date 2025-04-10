@@ -1,0 +1,20 @@
+title: "Explore TQ's PQ tables with CMNN"
+description: Try CMNN on initial matched data.
+authors:
+  - name: Tianqing Zhang
+    slack: Tianqing
+tags:
+  - comcam
+parameters:
+  data_folder_path:
+    type: string
+    description: Data Folder on USDF
+    default: "/sdf/group/rubin/shared/pz/users/ztq1996/comcam/data/"
+  train_filename:
+    type: string
+    description: Training data within USDF data folder
+    default: "secured_matched_deredden_train.pq"
+  test_filename:
+    type: string
+    description: Test data within USDF data folder
+    default: "secured_matched_deredden_test.pq"
