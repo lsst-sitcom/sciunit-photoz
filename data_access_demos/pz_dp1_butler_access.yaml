@@ -1,0 +1,25 @@
+title: "Explore DP1 PZ with the butler"
+description: Use the butler to access DP1 photo-zs.
+authors:
+  - name: Bryce Kalmbach
+    slack: Bryce Kalmbach
+tags:
+  - comcam
+  - dp1
+parameters:
+  algo_1:
+    type: string
+    description: Name of 1st photo-z algorithm to compare
+    default: "knn"
+  algo_2:
+    type: string
+    description: Name of 2nd photo-z algorithm to compare
+    default: "bpz"
+  flux_model:
+    type: string
+    description: Type of flux to get from the object table.
+    default: "gaap1p0"
+  use_six_band:
+    type: boolean
+    description: Require flux in all six bands. If false, require only griz flux.
+    default: True
