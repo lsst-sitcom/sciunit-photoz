@@ -19,7 +19,7 @@ parameters:
     type: string
     description: Type of flux to get from the object table.
     default: "gaap1p0"
-  use_six_band:
-    type: boolean
-    description: Require flux in all six bands. If false, require only griz flux.
-    default: True
+  required_bands:
+    type: string
+    description: Specify in a single string the filters where a flux measurement must be present for the final catalog (e.g. 'ugrizy' for all six bands).
+    default: 'griz'
